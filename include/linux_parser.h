@@ -4,6 +4,7 @@
 #include <fstream>
 #include <regex>
 #include <string>
+#include <vector>
 
 namespace LinuxParser {
 // Paths
@@ -52,6 +53,16 @@ std::string Ram(int pid);
 std::string Uid(int pid);
 std::string User(int pid);
 long int UpTime(int pid);
-};  // namespace LinuxParser
+
+//Personal
+std::vector<long> ProcData(std::string cpu);
+
+};  
+
+
+
+
+// namespace LinuxParser
+
 
 #endif
