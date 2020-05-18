@@ -27,5 +27,9 @@ int main() {
   float a = Proc.Utilization();
    a = Proc.Utilization();
    a = Proc.Utilization();
+
+   std::string command = LinuxParser::Command(1459); /ok
+   std::string user = LinuxParser::User(3021); //ok
+   user = LinuxParser::User(1); //ok
 #endif
 }
