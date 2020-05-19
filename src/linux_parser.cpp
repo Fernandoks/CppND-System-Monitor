@@ -64,12 +64,6 @@ vector<int> LinuxParser::Pids() {
   return pids;
 }
 
-/*
- *   Total used memory = MemTotal - MemFree
- *   Non cache/buffer memory (green) = Total used memory - (Buffers + Cached
- * memory) Buffers (blue) = Buffers Cached memory (yellow) = Cached +
- * SReclaimable - Shmem Swap = SwapTotal - SwapFree
- */
 
 float LinuxParser::MemoryUtilization() {
   string line;
@@ -95,10 +89,10 @@ float LinuxParser::MemoryUtilization() {
   float memTotal = mem.back();
   mem.pop_back();
 
-  return ((memTotal - memFree) / memTotal);
+  return ((memTotal - memAvailable) / memTotal);
 }
 
-// TODO: Read and return the system uptime
+
 long LinuxParser::UpTime() {
   string line;
   long suspendedTime, idleTime;
@@ -113,11 +107,7 @@ long LinuxParser::UpTime() {
   return total;
 }
 
-/*
-Example of expected data
-user nice   system  idle   iowait     irq   softirq  steal  guest guest_nice
-cpu  74608   2520   24433   1117073   6176   4054     0        0      0
-*/
+
 std::vector<long> LinuxParser::ProcData(std::string cpu) {
   string line;
   string cpuName;
@@ -148,23 +138,39 @@ std::vector<long> LinuxParser::ProcData(std::string cpu) {
   }
 }
 
-// TODO: Read and return the number of jiffies for the system
-long LinuxParser::Jiffies() { return 0; }
+vector<long> LinuxParser::CpuUtilization(int pid) 
+{ 
+    char state;
+  std::string comm;
+  long ppid, pgrp, session, tty_nr, tpgid, flags, minflt, cminflt, majflt,
+      cmajflt, utime, stime, cutime, cstime, priority, nice, num_threads,
+      itrealvalue;
+  std::string line;
+  long startTime;
+  std::vector<long> time;
 
-// TODO: Read and return the number of active jiffies for a PID
-// REMOVE: [[maybe_unused]] once you define the function
-long LinuxParser::ActiveJiffies(int pid [[maybe_unused]]) { return 0; }
+  long clock = sysconf(_SC_CLK_TCK);
 
-// TODO: Read and return the number of active jiffies for the system
-long LinuxParser::ActiveJiffies() { return 0; }
+  std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatFilename);
+  if (stream.is_open()) {
+    std::getline(stream, line);
+    std::istringstream linestream(line);
 
-// TODO: Read and return the number of idle jiffies for the system
-long LinuxParser::IdleJiffies() { return 0; }
+    linestream >> pid >> comm >> state >> ppid >> pgrp >> session >> tty_nr >>
+        tpgid >> flags >> minflt >> cminflt >> majflt >> cmajflt >> utime >>
+        stime >> cutime >> cstime >> priority >> nice >> num_threads >>
+        itrealvalue >> startTime;
+        time.emplace_back(utime);
+        time.emplace_back(stime);
+        time.emplace_back(cutime);
+        time.emplace_back(cstime);
+        time.emplace_back(startTime);
+        time.emplace_back(clock);
+  }
+  return time; 
+}
 
-// TODO: Read and return CPU utilization
-vector<string> LinuxParser::CpuUtilization() { return {}; }
 
-// TODO: Read and return the total number of processes
 int LinuxParser::TotalProcesses() {
   string line;
   string name;
@@ -183,7 +189,7 @@ int LinuxParser::TotalProcesses() {
   return 0;
 }
 
-// TODO: Read and return the number of running processes
+
 int LinuxParser::RunningProcesses() {
   std::string line;
   std::string name;
@@ -202,8 +208,7 @@ int LinuxParser::RunningProcesses() {
   return 0;
 }
 
-// TODO: Read and return the command associated with a process
-// REMOVE: [[maybe_unused]] once you define the function
+
 string LinuxParser::Command(int pid) {
   std::string command;
   std::string line;
@@ -217,10 +222,8 @@ string LinuxParser::Command(int pid) {
   return "Command Not Found";
 }
 
-// TODO: Read and return the memory used by a process
-// REMOVE: [[maybe_unused]] once you define the function
-string LinuxParser::Ram(int pid) 
-{
+
+string LinuxParser::Ram(int pid) {
   std::string code, vmSize, idle;
   std::string line;
   std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatusFilename);
@@ -229,18 +232,16 @@ string LinuxParser::Ram(int pid)
       std::getline(stream, line);
       std::istringstream linestream(line);
       linestream >> code >> vmSize >> idle;
-      if (code.compare("State:") && idle.compare("(idle)"))
-      {
-        return "idle";
+      if (stream.eof()) {
+        return "0";
       }
     } while (code.compare("VmSize:") != 0);
-    return vmSize;
+    return (std::to_string(stoi(vmSize)/1024));
   }
 }
 
-// TODO: Read and return the user ID associated with a process
-// REMOVE: [[maybe_unused]] once you define the function
-string LinuxParser::Uid(int pid [[maybe_unused]]) {
+
+string LinuxParser::Uid(int pid) {
   std::string code, uid;
   std::string line;
   std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatusFilename);
@@ -254,8 +255,7 @@ string LinuxParser::Uid(int pid [[maybe_unused]]) {
   }
 }
 
-// TODO: Read and return the user associated with a process
-// REMOVE: [[maybe_unused]] once you define the function
+
 string LinuxParser::User(int pid) {
   std::string user, userid;
   std::string dump;
@@ -270,28 +270,35 @@ string LinuxParser::User(int pid) {
       std::replace(line.begin(), line.end(), ':', ' ');
       std::istringstream linestream(line);
       linestream >> user >> dump >> userid;
+      if (stream.eof()) return "User not found";
     } while (userid.compare(uid) != 0);
     return user;
   }
 }
 
-// TODO: Read and return the uptime of a process
-// REMOVE: [[maybe_unused]] once you define the function
-long LinuxParser::UpTime(int pid) 
-{
+
+
+
+long LinuxParser::UpTime(int pid) {
+  char state;
+  std::string comm;
+  long ppid, pgrp, session, tty_nr, tpgid, flags, minflt, cminflt, majflt,
+      cmajflt, utime, stime, cutime, cstime, priority, nice, num_threads,
+      itrealvalue;
   std::string line;
   long startTime;
-  
+
   long clock = sysconf(_SC_CLK_TCK);
 
   std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatFilename);
   if (stream.is_open()) {
     std::getline(stream, line);
     std::istringstream linestream(line);
-    for (int i = 0; i < 23; ++i)
-    {
-      linestream >> startTime;
-    }
+
+    linestream >> pid >> comm >> state >> ppid >> pgrp >> session >> tty_nr >>
+        tpgid >> flags >> minflt >> cminflt >> majflt >> cmajflt >> utime >>
+        stime >> cutime >> cstime >> priority >> nice >> num_threads >>
+        itrealvalue >> startTime;
   }
   return (startTime / clock);
 }

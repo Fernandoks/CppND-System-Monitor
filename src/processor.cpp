@@ -2,9 +2,7 @@
 
 #include "linux_parser.h"
 
-// TODO: Return the aggregate CPU utilization
 float Processor::Utilization() {
-
   std::vector<long> cpuData = LinuxParser::ProcData("cpu");
   actualCPUdata.user = cpuData[0];
   actualCPUdata.nice = cpuData[1];
@@ -41,11 +39,9 @@ float Processor::Utilization() {
   return CPU_Percentage;
 }
 
-std::string Processor::getMemoryUtilization()
-{ 
+std::string Processor::getMemoryUtilization() {
   return (std::to_string(LinuxParser::MemoryUtilization()));
 }
-
 
 void Processor::getProcDataAll() {
   const std::string kCpuName{"cpu"};
@@ -62,4 +58,3 @@ void Processor::getProcDataAll() {
     cpus.emplace(nCpu, LinuxParser::ProcData(nCpu));
   } while (cpus[nCpu].back() != -1);
 }
-
