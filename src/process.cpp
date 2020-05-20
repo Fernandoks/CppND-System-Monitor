@@ -22,7 +22,12 @@ void Process::Pid(int pid) { pid_ = pid; }
 int Process::Pid() { return pid_; }
 
 float Process::CpuUtilization() {
-  long utime, stime, cutime, cstime, startTime, clock;
+  long utime = 0; 
+  long stime = 0;
+  long cutime = 0;
+  long cstime = 0;
+  long startTime = 0; 
+  long clock = 0;
   auto time = LinuxParser::CpuUtilization(Process::Pid());
   if (!time.empty()) {
     clock = time.back();
@@ -54,8 +59,7 @@ string Process::User() { return LinuxParser::User(Process::Pid()); }
 
 long int Process::UpTime() { return (LinuxParser::UpTime(Process::Pid())); }
 
-// TODO: Overload the "less than" comparison operator for Process objects
-// REMOVE: [[maybe_unused]] once you define the function
+
 bool Process::operator<(Process const &a) const {
   return (this->pid_ > a.pid_ ? true : false);
 }

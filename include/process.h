@@ -8,6 +8,7 @@ It contains relevant attributes as shown below
 */
 class Process {
  public:
+    Process() : pid_(0) {}
   int Pid();                               // TODO: See src/process.cpp]
   void Pid(int pid);
   std::string User();                      // TODO: See src/process.cpp

@@ -64,7 +64,6 @@ vector<int> LinuxParser::Pids() {
   return pids;
 }
 
-
 float LinuxParser::MemoryUtilization() {
   string line;
   string dump1, dump2;
@@ -81,21 +80,21 @@ float LinuxParser::MemoryUtilization() {
 
     mem.emplace_back(s);
   }
+  stream.close();
 
   float memAvailable = mem.back();
   mem.pop_back();
-  float memFree = mem.back();
-  mem.pop_back();
+  mem.pop_back(); //Pop MemFree 
   float memTotal = mem.back();
   mem.pop_back();
 
   return ((memTotal - memAvailable) / memTotal);
 }
 
-
 long LinuxParser::UpTime() {
   string line;
-  long suspendedTime, idleTime;
+  long suspendedTime = 0;
+  long idleTime = 0;
 
   std::ifstream stream(kProcDirectory + kUptimeFilename);
   if (stream.is_open()) {
@@ -103,17 +102,15 @@ long LinuxParser::UpTime() {
     std::istringstream linestream(line);
     linestream >> suspendedTime >> idleTime;
   }
+  stream.close();
   long total = (suspendedTime + idleTime);
   return total;
 }
-
 
 std::vector<long> LinuxParser::ProcData(std::string cpu) {
   string line;
   string cpuName;
   std::vector<long> s;
-  long s_temp;
-  int value;
 
   std::ifstream stream(kProcDirectory + kStatFilename);
   if (stream.is_open()) {
@@ -122,7 +119,7 @@ std::vector<long> LinuxParser::ProcData(std::string cpu) {
     linestream >> cpuName;
     while (cpuName.compare(cpu) != 0) {
       if (stream.eof()) {
-        s.empty();
+        s.clear();
         s.emplace_back(-1);
         return s;
       }
@@ -130,17 +127,20 @@ std::vector<long> LinuxParser::ProcData(std::string cpu) {
       std::istringstream linestream(line);
       linestream >> cpuName;
     }
+    long s_temp = 0;
     while (linestream >> s_temp) {
       s.emplace_back(s_temp);
     }
-
+    stream.close();
     return s;
   }
+  s.clear();
+  s.emplace_back(-2);
+  return s;
 }
 
-vector<long> LinuxParser::CpuUtilization(int pid) 
-{ 
-    char state;
+vector<long> LinuxParser::CpuUtilization(int pid) {
+  char state;
   std::string comm;
   long ppid, pgrp, session, tty_nr, tpgid, flags, minflt, cminflt, majflt,
       cmajflt, utime, stime, cutime, cstime, priority, nice, num_threads,
@@ -160,16 +160,16 @@ vector<long> LinuxParser::CpuUtilization(int pid)
         tpgid >> flags >> minflt >> cminflt >> majflt >> cmajflt >> utime >>
         stime >> cutime >> cstime >> priority >> nice >> num_threads >>
         itrealvalue >> startTime;
-        time.emplace_back(utime);
-        time.emplace_back(stime);
-        time.emplace_back(cutime);
-        time.emplace_back(cstime);
-        time.emplace_back(startTime);
-        time.emplace_back(clock);
+    time.emplace_back(utime);
+    time.emplace_back(stime);
+    time.emplace_back(cutime);
+    time.emplace_back(cstime);
+    time.emplace_back(startTime);
+    time.emplace_back(clock);
+    stream.close();
   }
-  return time; 
+  return time;
 }
-
 
 int LinuxParser::TotalProcesses() {
   string line;
@@ -183,12 +183,12 @@ int LinuxParser::TotalProcesses() {
     linestream >> name >> value;
 
     if ((name.compare("processes") == 0)) {
+      stream.close();
       return value;
     }
   }
   return 0;
 }
-
 
 int LinuxParser::RunningProcesses() {
   std::string line;
@@ -202,12 +202,12 @@ int LinuxParser::RunningProcesses() {
     linestream >> name >> value;
 
     if ((name.compare("procs_running") == 0)) {
+      stream.close();
       return value;
     }
   }
   return 0;
 }
-
 
 string LinuxParser::Command(int pid) {
   std::string command;
@@ -217,11 +217,11 @@ string LinuxParser::Command(int pid) {
     std::getline(stream, line);
     std::istringstream linestream(line);
     linestream >> command;
+    stream.close();
     return command;
   }
   return "Command Not Found";
 }
-
 
 string LinuxParser::Ram(int pid) {
   std::string code, vmSize, idle;
@@ -236,10 +236,11 @@ string LinuxParser::Ram(int pid) {
         return "0";
       }
     } while (code.compare("VmSize:") != 0);
-    return (std::to_string(stoi(vmSize)/1024));
+    stream.close();
+    return (std::to_string(stoi(vmSize) / 1024));
   }
+  return "0";
 }
-
 
 string LinuxParser::Uid(int pid) {
   std::string code, uid;
@@ -251,10 +252,11 @@ string LinuxParser::Uid(int pid) {
       std::istringstream linestream(line);
       linestream >> code >> uid;
     } while (code.compare("Uid:") != 0);
+    stream.close();
     return uid;
   }
+  return 0;
 }
-
 
 string LinuxParser::User(int pid) {
   std::string user, userid;
@@ -272,12 +274,11 @@ string LinuxParser::User(int pid) {
       linestream >> user >> dump >> userid;
       if (stream.eof()) return "User not found";
     } while (userid.compare(uid) != 0);
+    stream.close();
     return user;
   }
+  return "0";
 }
-
-
-
 
 long LinuxParser::UpTime(int pid) {
   char state;
@@ -286,7 +287,7 @@ long LinuxParser::UpTime(int pid) {
       cmajflt, utime, stime, cutime, cstime, priority, nice, num_threads,
       itrealvalue;
   std::string line;
-  long startTime;
+  long startTime = 0;
 
   long clock = sysconf(_SC_CLK_TCK);
 
@@ -299,6 +300,7 @@ long LinuxParser::UpTime(int pid) {
         tpgid >> flags >> minflt >> cminflt >> majflt >> cmajflt >> utime >>
         stime >> cutime >> cstime >> priority >> nice >> num_threads >>
         itrealvalue >> startTime;
+    stream.close();
   }
   return (startTime / clock);
 }
